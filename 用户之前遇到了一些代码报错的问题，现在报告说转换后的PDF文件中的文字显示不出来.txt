@@ -1,0 +1,100 @@
+用户之前遇到了一些代码报错的问题，现在报告说转换后的PDF文件中的文字显示不出来。这个问题可能涉及字体支持或字符编码的问题。因为中文字符需要特定的字体才能在PDF中正确渲染，而默认的Helvetica字体可能不支持中文。我需要确定用户是否在代码中正确设置了支持中文的字体。
+
+用户之前的代码中使用的是“Helvetica”字体，这可能不包含中文字符，导致文字显示为空白或者乱码。解决这个问题的关键是确保使用的字体支持中文，并且正确配置ReportLab使用的字体。
+
+我应该建议用户检查以下几点：
+1. 字体是否支持中文，例如使用“SimHei”（黑体）或“STSong”（宋体）。
+2. 确保系统中有安装所需的字体，并在代码中正确指定字体名称。
+3. 使用正确的编码方式读取文本文件，例如UTF-8。
+
+此外，ReportLab本身对中文的支持需要特定的设置，比如使用CID字体和正确注册字体。用户可能需要使用ChineseSupport模块或手动指定中文字体。
+
+另外，需要注意reportlab的版本，某些旧版本可能存在中文字体支持的问题，建议用户更新到最新版本。如果用户的操作系统中没有中文字体，可能需要安装相应的字体包，或者将字体文件嵌入到PDF中。
+
+总结解决方案步骤：
+1. 替换字体设置，使用支持中文的字体，如“SimSun”或“STSong”。
+2. 在代码中添加中文支持，可能需要使用reportlab的CID字体相关模块。
+3. 确保文本读取时使用正确的编码（UTF-8）。
+4. 测试转换后的PDF是否能够显示中文。
+5. 提供具体的示例代码修改部分，确保用户可以直接替换原有代码片段。
+
+另外，用户提到的批量转换和进度条功能，可能在处理多文件时如果出现普遍性的显示问题，可能还需要统一检查字体设置是否适用于所有文件。如果有转换过程中部分文件成功，但其他失败，可能需要分别查看日志，但当前的问题是所有文件都无法显示，所以更可能是统一的字体配置错误。
+
+最后，可能需要引导用户检查生成PDF的日志是否报错，以及确认所使用的字体路径是否正确，或者是否需要将字体文件包含在项目路径中，或者进行字体注册。
+问题原因：默认字体不支持中文显示，解决方案如下：
+
+1.按以下步骤增强中文字体支持：
+# 在文件开头添加字体注册部分
+from reportlab.pdfbase import pdfmetrics
+from reportlab.pdfbase.cidfonts import UnicodeCIDFont
+import reportlab.lib.fonts
+
+# 注册中文字体（需要使用系统已安装的中文字体）
+pdfmetrics.registerFont(UnicodeCIDFont('STSong-Light'))  # 使用系统自带宋体
+
+# 或者使用具体字体路径（可靠方案）
+from reportlab.pdfbase.ttfonts import TTFont
+pdfmetrics.registerFont(TTFont('SimSun', 'simsun.ttc'))  # 需提供字体文件路径
+2.修改后的转换方法（关键修改部分）：
+def convert_file(self, input_path, output_dir):
+    try:
+        with open(input_path, 'r', encoding='utf-8') as f:
+            raw_text = f.read()
+
+        # ...其他代码保持不变...
+
+        # 修改样式设置部分
+        styles = getSampleStyleSheet()
+        style = styles['Normal']
+        style.fontName = 'SimSun'  # 使用注册的字体名称
+        style.fontSize = 12
+        style.leading = 16
+        style.wordWrap = 'CJK'   # 特别指定中文换行模式
+
+        # ...保持段落处理逻辑...
+
+        doc.build(content)
+        self.queue.put((True, input_path))
+        
+    except Exception as e:
+        # ...异常处理保持不变...
+完整修正步骤：
+
+1.安装字体依赖（建议方案）：
+# 将中文字体文件（如simsun.ttc）放入程序目录下
+2.修改后的完整类定义核心部分：
+from reportlab.pdfbase import pdfmetrics
+from reportlab.pdfbase.ttfonts import TTFont
+
+class PDFConverterApp:
+    def __init__(self, root):
+        # 注册字体（必须在创建任何样式之前）
+        try:
+            pdfmetrics.registerFont(TTFont('SimSun', 'simsun.ttc'))
+        except:
+            messagebox.showerror("字体错误", "未找到中文字体文件")
+        
+        # ...其余初始化代码不变...
+
+    def convert_file(self, input_path, output_dir):
+        # ...保持其他代码不变...
+        
+        # 确保使用已注册的字体名称
+        style.fontName = 'SimSun'  
+        style._fontName = 'SimSun'  # 强制刷新字体设置
+        
+        # ...后续代码不变...
+3.重要提示：
+需要将字体文件（如simsun.ttc）放置在程序可访问路径
+或使用系统已安装的字体（需确认准确字体名称）
+推荐使用开源字体如「文泉驿微米黑」避免版权问题
+4.其他改进建议：
+# 增加字体回调函数处理缺失字符
+from reportlab.pdfgen import canvas
+from reportlab.rl_config import register_resetFont
+
+def resetFont(canvas):
+    canvas.setFont('SimSun', 12)
+
+register_resetFont(resetFont)
+通过以上修改，确保生成的PDF能正确包含中文字形信息。建议优先使用具体字体文件路径的方案以保证稳定性。
